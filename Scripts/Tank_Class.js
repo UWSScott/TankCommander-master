@@ -1,22 +1,33 @@
-/**
- * Created by B00252403 && B00231451 on 22/03/2016.
- */
+var myId=0;
 
 var land;
+
+var cursors;
+
 var shadow;
 var tank;
 var turret;
 var player;
-//var cursors;
-var currentSpeed;
-var currentSpeed = 0;
-var cursors;
-
 var enemies;
 var enemyBullets;
 var enemiesTotal = 5;
 var enemiesAlive = 0;
 var tanksList;
+var explosions;
+var waveCount = 0;
+var playerScore = 0;
+
+var x,y;
+
+var A_Key;
+var D_Key;
+
+var pickups;
+var gas;
+
+var spaceKey;
+var single_tank;
+var single_tank_turret;
 
 var armour = 30;
 var player = player;
@@ -28,20 +39,6 @@ var nextFire = 0;
 
 var ammoCount = 0;
 var fuelCount = 0;
-
-var bullets;
-var waveCount = 0;
-var playerScore = 0;
-
-var spaceKey;
-var single_tank;
-var single_tank_turret;
-
-var A_Key;
-var D_Key;
-
-var pickups;
-var gas;
 
 var fire_Button;
 var rotate_Button_L;
@@ -56,12 +53,13 @@ var ammo_pickups = new Array();
 var funvariable  = 0;
 
 var isDriver = true;
-
 var b_left_down = false;
 var b_right_down = false;
 var b_up_down = false;
-var b_down_down = false;
 
+var bullets;
+var fireRate = 100;
+var nextFire = 0;
 
 var ready = false;
 var eurecaServer;
@@ -74,11 +72,20 @@ var eurecaClientSetup = function() {
         eurecaServer = proxy;
     });
 
+
     //methods defined under "exports" namespace become available in the server side
-    eurecaClient.exports.setId = function(id)
+    eurecaClient.exports.setId = function(id, size)
     {
         //create() is moved here to make sure nothing is created before uniq id assignation
         myId = id;
+        //console.log(id);
+        //console.log(size);
+
+        if(size == 2)
+            isDriver = false;
+        else
+            isDriver = true;
+
         create();
         eurecaServer.handshake();
         ready = true;
@@ -86,44 +93,49 @@ var eurecaClientSetup = function() {
 
     eurecaClient.exports.kill = function(id)
     {
-        if (enemies[id]) {
-            enemies[id].kill();
-            console.log('killing ', id, enemies[id]);
+        if (tanksList[id]) {
+            tanksList[id].kill();
+            console.log('killing ', id, tanksList[id]);
         }
     }
 
     eurecaClient.exports.spawnEnemy = function(i, x, y)
     {
+
         if (i == myId) return; //this is me
 
-        console.log('SPAWN');
-        var tnk = new Tank(i, game, tank);
-        enemies[i] = tnk;
+        //console.log('SPAWN');
+
+      var tnk = new Tank(i, game, tank);
+       //var tnk = new Turret_Gunner(i, game, tank);
+       tanksList[i] = tnk;
     }
 
     eurecaClient.exports.updateState = function(id, state)
     {
-        if (enemies[id]) {
-            enemies[id].cursor = state;
-            enemies[id].tank.x = state.x;
-            enemies[id].tank.y = state.y;
-            enemies[id].tank.angle = state.angle;
-            enemies[id].turret.rotation = state.rot;
-            enemies[id].update();
+        if (tanksList[id])
+        {
+            tanksList[id].cursor = state;
+           // if(isDriver)
+            //{
+                tanksList[id].tank.x = state.x;
+                tanksList[id].tank.y = state.y;
+                tanksList[id].tank.angle = state.angle;
+            //} else {
+                tanksList[id].turret.rotation = state.rot;
+           // }
+            tanksList[id].update();
         }
     }
 }
 
-
 Tank = function (index, game, player) {
-
-    /*this.cursor = {
+    this.cursor = {
         left:false,
         right:false,
         up:false,
         fire:false
-    }*/
-    this.cursor = game.input.keyboard.createCursorKeys();
+    }
 
     this.input = {
         left:false,
@@ -132,12 +144,12 @@ Tank = function (index, game, player) {
         fire:false
     }
 
-    var xPosition = 0;
-    var yPosition = 0;
+    this.x = 0;
+    this.y = 0;
 
     this.game = game;
+    this.health = 30;
     this.player = player;
-
     this.bullets = game.add.group();
     this.bullets.enableBody = true;
     this.bullets.physicsBodyType = Phaser.Physics.ARCADE;
@@ -147,9 +159,6 @@ Tank = function (index, game, player) {
     this.bullets.setAll('outOfBoundsKill', true);
     this.bullets.setAll('checkWorldBounds', true);
 
-    this.turretRotation =1;
-    this.firingSpeed =500;
-    this.rotationSpeed =1;
 
     this.damage =5; //10
     this.armour =5; //10
@@ -159,10 +168,11 @@ Tank = function (index, game, player) {
     this.currentSpeed =0;
     this.nextFire = 0;
     this.dead = false;
+    this.alive = true;
 
-    this.shadow = game.add.sprite(xPosition, yPosition, 'shadow');
-    this.tank = game.add.sprite(xPosition, yPosition, 'single_tank');
-    this.turret = game.add.sprite(xPosition, yPosition, 'single_tank_turret');
+    this.shadow = game.add.sprite(this.x, this.y, 'shadow');
+    this.tank = game.add.sprite(this.x, this.y, 'single_tank');
+    this.turret = game.add.sprite(this.x, this.y, 'single_tank_turret');
 
     this.shadow.anchor.set(0.5);
     this.tank.anchor.set(0.5);
@@ -177,40 +187,103 @@ Tank = function (index, game, player) {
     this.tank.angle = 0;
 
     game.physics.arcade.velocityFromRotation(this.tank.rotation, 0, this.tank.body.velocity);
+
 };
+
+
+
+/*
+Turret_Gunner = Tank.extend(function (index, game, player)
+{
+    this.tank.id = index;
+    this.game = game;
+    this.player = player;
+
+});*/
 
 Tank.prototype.update = function() {
 
-    //alert("alive: " + this.alive);
-    //console.log("is alive? " + this.alive);
+    var inputChanged = (
+        this.cursor.left != this.input.left ||
+        this.cursor.right != this.input.right ||
+        this.cursor.up != this.input.up ||
+        this.cursor.fire != this.input.fire
+    );
 
-    if(this.alive)
-    {
-        if (isDriver) {
-            if (cursors.left.isDown) {
-                drive_rotate_Left();
-            }
-            else if (cursors.right.isDown) {
-                drive_rotate_Right();
-            }
 
-            if (cursors.up.isDown) {
-                this.currentSpeed = 300;
-            }
-            else {
-                if (this.currentSpeed > 0) {
-                    this.currentSpeed -= 4;
-                }
-            }
-        } else {
-            if (A_Key.isDown) {
-                rotate_turret_left();
-            }
-            if (D_Key.isDown) {
-                rotate_turret_right();
-            }
+    if (inputChanged) {
+        //Handle input change here
+        //send new values to the server
+        if (this.tank.id == myId) {
+            // send latest valid state to the server
+            this.input.x = this.tank.x;
+            this.input.y = this.tank.y;
+            this.input.angle = this.tank.angle;
+            this.input.rot = this.turret.rotation;
+
+            eurecaServer.handleKeys(this.input);
+
         }
     }
+
+
+    if (this.cursor.left)
+    {
+        this.tank.angle -= 1;
+    } else if (this.cursor.right)
+    {
+        this.tank.angle += 1;
+    }
+
+    if (this.cursor.up)
+    {
+        //  The speed we'll travel at
+        this.currentSpeed = 300;
+    } else {
+        if (this.currentSpeed > 0)
+        {
+            this.currentSpeed -= 4;
+        }
+    }
+
+    /*if (this.alive) {
+     if (isDriver) {
+     if (cursors.left.isDown) {
+     drive_rotate_Left();
+     }
+     else if (cursors.right.isDown) {
+     drive_rotate_Right();
+     }
+
+     if (cursors.up.isDown) {
+     this.currentSpeed = 300;
+     }
+     else {
+     if (this.currentSpeed > 0) {
+     this.currentSpeed -= 4;
+     }
+     }
+     } else {
+     if (A_Key.isDown) {
+     rotate_turret_left();
+     }
+     if (D_Key.isDown) {
+     rotate_turret_right();
+     }
+     }
+     }*/
+
+
+    if (this.cursor.up) {
+        //  The speed we'll travel at
+        this.currentSpeed = 300;
+    }
+    else {
+        if (this.currentSpeed > 0) {
+            this.currentSpeed -= 4;
+        }
+    }
+
 
     if (this.fuelCount <= 0) {
         this.currentSpeed = 0;
@@ -218,21 +291,20 @@ Tank.prototype.update = function() {
     }
 
     if (this.currentSpeed > 0 && this.fuelCount > 0) {
-        this.fuelCount -= 0.1;
+        //this.fuelCount -= 0.1;
         game.physics.arcade.velocityFromRotation(this.tank.rotation, this.currentSpeed, this.tank.body.velocity);
-    }
+    } else { game.physics.arcade.velocityFromRotation(this.tank.rotation, 0, this.tank.body.velocity); }
+
+    if (spaceKey.isDown) { fire(); }
 
     this.shadow.x = this.tank.x;
     this.shadow.y = this.tank.y;
     this.shadow.rotation = this.tank.rotation;
     this.turret.x = this.tank.x;
     this.turret.y = this.tank.y;
+}
 
-    if (spaceKey.isDown) { fire(); }
-};
-
-Tank.prototype.damage_Fun = function()
-{
+Tank.prototype.damage_Fun = function() {
     this.shadow.kill();
     this.tank.kill();
     this.turret.kill();
@@ -252,7 +324,6 @@ EnemyTank = function (index, game, player, bullets)
     var y = game.world.randomY;
 
     this.game = game;
-    this.health = 3;
     this.player = player;
     this.bullets = bullets;
     this.fireRate = 1000;
@@ -277,9 +348,8 @@ EnemyTank = function (index, game, player, bullets)
     this.tank.body.bounce.setTo(1, 1);
 
     this.tank.angle = game.rnd.angle();
-    //this.tank.rotation = this.tank.angle;
-
     game.physics.arcade.velocityFromRotation(this.tank.rotation, 100, this.tank.body.velocity);
+
 };
 
 EnemyTank.prototype.damage_Fun = function()
@@ -328,8 +398,7 @@ function fire ()
     }
 }
 
-//var game = new Phaser.Game(800, 600, Phaser.AUTO, 'Tank Commander', { preload: preload, create: create, update: update, render: render });
-var game = new Phaser.Game(800, 600, Phaser.AUTO, 'Tank Commander', { preload: preload, create: eurecaClientSetup, update: update, render: render });
+var game = new Phaser.Game(800, 600, Phaser.AUTO, 'phaser-example', { preload: preload, create: eurecaClientSetup, update: update, render: render });
 
 function preload ()
 {
@@ -348,59 +417,59 @@ function preload ()
     game.load.image('gas', 'assets/gas.png');
 }
 
-function create ()
-{
+function create () {
+
+    //  Resize our game world to be a 2000 x 2000 square
     game.world.setBounds(-1000, -1000, 2000, 2000);
     game.stage.disableVisibilityChange  = true;
+
     land = game.add.tileSprite(0, 0, 800, 600, 'ground');
     land.fixedToCamera = true;
 
-    enemies = [];
-    player = new Tank(0, game, tank);
+    tanksList = {};
+
+    player = new Tank(myId, game, tank);
+    tanksList[myId] = player;
     player.alive = true;
     tank = player.tank;
-    enemies[myId] = player;
-
     turret = player.turret;
     tank.x=0;
     tank.y=0;
+    bullets = player.bullets;
     shadow = player.shadow;
 
+    //  Explosion pool
+    // explosions = game.add.group();
 
-    enemyBullets = game.add.group();
-    enemyBullets.enableBody = true;
-    enemyBullets.physicsBodyType = Phaser.Physics.ARCADE;
-    enemyBullets.createMultiple(100, 'bullet');
-    enemyBullets.setAll('anchor.x', 0.5);
-    enemyBullets.setAll('anchor.y', 0.5);
-    enemyBullets.setAll('outOfBoundsKill', true);
-    enemyBullets.setAll('checkWorldBounds', true);
+    /* for (var i = 0; i < 10; i++)
+     {
+     var explosionAnimation = explosions.create(0, 0, 'kaboom', [0], false);
+     explosionAnimation.anchor.setTo(0.5, 0.5);
+     explosionAnimation.animations.add('kaboom');
+     }*/
 
-    bullets = game.add.group();
-    bullets.enableBody = true;
-    bullets.physicsBodyType = Phaser.Physics.ARCADE;
-    bullets.createMultiple(30, 'bullet', 0, false);
-    bullets.setAll('anchor.x', 0.5);
-    bullets.setAll('anchor.y', 0.5);
-    bullets.setAll('outOfBoundsKill', true);
-    bullets.setAll('checkWorldBounds', true);
+    tank.bringToTop();
+    turret.bringToTop();
 
     A_Key = game.input.keyboard.addKey(Phaser.Keyboard.A);
     D_Key = game.input.keyboard.addKey(Phaser.Keyboard.D);
     spaceKey = game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
     cursors = game.input.keyboard.createCursorKeys();
 
-    tank.bringToTop();
-    turret.bringToTop();
-
     pickups = game.add.group();
     pickups.enableBody = true;
     gas = game.add.group();
     gas.enableBody = true;
 
-   // newWave();
+    this.shadow.anchor.set(0.5);
+    this.tank.anchor.set(0.5);
+    this.turret.anchor.set(0.3, 0.5);
+
+    //newWave();
     //spawnPickups();
     game.camera.follow(tank);
+    game.camera.deadzone = new Phaser.Rectangle(150, 150, 500, 300);
+    game.camera.focusOnXY(0, 0);
 
 
     if(isDriver == false) {
@@ -424,54 +493,98 @@ function create ()
     }
 }
 
+
+/*
+ pickups = game.add.group();
+ pickups.enableBody = true;
+ gas = game.add.group();
+ gas.enableBody = true;
+
+ // newWave();
+ //spawnPickups();
+ game.camera.follow(tank);
+
+
+ if(isDriver == false) {
+ fire_Button = game.add.button(650, 450, 'fireButton', fire, this, 2, 1, 0);
+ fire_Button.fixedToCamera = true;
+
+ rotate_Button_L = game.add.button(10, 450, 'rotateButton_L', rotate_turret_left, this, 2, 1, 0);
+ rotate_Button_R = game.add.button(200, 450, 'rotateButton_R', rotate_turret_right, this, 2, 1, 0);
+ rotate_Button_L.fixedToCamera = true;
+ rotate_Button_R.fixedToCamera = true;
+ } else {
+ drive_Button_U = game.add.button(650, 350, 'rotateButton_U', drive_forward, this, 2, 1, 0);
+ drive_Button_D = game.add.button(650, 500, 'rotateButton_D', drive_pause, this, 2, 1, 0);
+ drive_Button_U.fixedToCamera = true;
+ drive_Button_D.fixedToCamera = true;
+
+ drive_Rotate_Button_L = game.add.button(10, 450, 'rotateButton_L', drive_rotate_Left, this, 2, 1, 0);
+ drive_Rotate_Button_R = game.add.button(200, 450, 'rotateButton_R', drive_rotate_Right, this, 2, 1, 0);
+ drive_Rotate_Button_L.fixedToCamera = true;
+ drive_Rotate_Button_R.fixedToCamera = true;
+ }
+ }*/
+
+
 function update () {
+    //do not update if client not ready
     if (!ready) return;
 
-    game.physics.arcade.overlap(enemyBullets, tank, bulletHitPlayer, null, this);
-    enemiesAlive = 0;
+    player.input.left = cursors.left.isDown;
+    player.input.right = cursors.right.isDown;
+    player.input.up = cursors.up.isDown;
+    player.input.fire = game.input.activePointer.isDown;
+    player.input.tx = game.input.x+ game.camera.x;
+    player.input.ty = game.input.y+ game.camera.y;
 
-   /* for (var i = 0; i < enemies.length; i++) {
-        if (enemies[i].alive){
-            enemiesAlive++;
-            game.physics.arcade.collide(tank, enemies[i].tank);
-            game.physics.arcade.overlap(bullets, enemies[i].tank, bulletHitEnemy, null, this);
-            enemies[i].update();
-        }
-    }*/
-
-   // if (enemiesAlive == 0) { newWave(); }
-
-
-    //player.update();
-
-    for (var i in enemies)
-    {
-        if (!enemies[i]) continue;
-        var curBullets = enemies[i].bullets;
-        var curTank = enemies[i].tank;
-        for (var j in enemies)
-        {
-            if (!enemies[j]) continue;
-            if (j!=i)
-            {
-
-                var targetTank = enemies[j].tank;
-
-                game.physics.arcade.overlap(curBullets, targetTank, bulletHitPlayer, null, this);
-
-            }
-            if (enemies[j].alive)
-            {
-                enemies[j].update();
-            }
-        }
-    }
-
+    //turret.rotation = game.physics.arcade.angleToPointer(turret);
     land.tilePosition.x = -game.camera.x;
     land.tilePosition.y = -game.camera.y;
 
-    game.physics.arcade.overlap(tank, gas, collectGas, null, this);
-    game.physics.arcade.overlap(tank, pickups, collectAmmo, null, this);
+
+    var tank_count = 0;
+    for (var i in tanksList)
+    {
+        tank_count++;
+        //if (!tanksList[i]) continue;
+
+        if(isDriver)
+        {
+            //player.turret = tanksList[i].turret;
+
+            player.turret.rotation = tanksList[i].turret.rotation;
+            console.log((player.turret.rotation + " " +  tanksList[i].turret.rotation + " " + i));
+        } else {
+            player.tank = tanksList[i].tank;
+            player.turret.x = tanksList[i].turret.x;
+            player.turret.y = tanksList[i].turret.y;
+            //player.y = tanksList[i].y;
+           // player.tank.angle = tanksList.angle;
+           // console.log((player.x + " " +  tanksList[i].x));
+        }
+
+        var curBullets = tanksList[i].bullets;
+        var curTank = tanksList[i].tank;
+        for (var j in tanksList)
+        {
+            if (!tanksList[j]) continue;
+            if (j!=i)
+            {
+                var targetTank = tanksList[j].tank;
+
+                //game.physics.arcade.overlap(curBullets, targetTank, bulletHitPlayer, null, this);
+                game.physics.arcade.overlap(tank, gas, collectGas, null, this);
+                game.physics.arcade.overlap(tank, pickups, collectAmmo, null, this);
+
+            }
+            if (tanksList[j].alive)
+            {
+                tanksList[j].update();
+            }
+            console.log(tanksList[i].turret.rotation + " " +  tanksList[j].turret.rotation + " " + player.turret.rotation);
+        }
+    }
 }
 
 function collectGas (player2, gas)
@@ -564,9 +677,6 @@ function getPenetration(damageValue, armourValue)
     return false;
 }
 
-
-
-
 function rotate_turret_left() { player.turret.rotation -= 0.1; }
 function rotate_turret_right() { player.turret.rotation += 0.1; }
 
@@ -574,8 +684,6 @@ function drive_forward() { player.currentSpeed = 300; }
 function drive_pause() { player.currentSpeed -= 4; if(player.currentSpeed <0) player.currentSpeed = 0; }
 function drive_rotate_Right() { player.tank.angle += 4; }
 function drive_rotate_Left() { player.tank.angle -= 4; }
-
-
 
 function set_button_left_f() { b_left_down = false; }
 function set_button_right_f() { b_right_down = false; }
