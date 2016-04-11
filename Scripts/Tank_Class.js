@@ -116,11 +116,13 @@ var eurecaClientSetup = function() {
         if (tanksList[id])
         {
             tanksList[id].cursor = state;
-           // if(isDriver)
+           //if(isDriver)
             //{
                 tanksList[id].tank.x = state.x;
                 tanksList[id].tank.y = state.y;
                 tanksList[id].tank.angle = state.angle;
+                tanksList[id].ammoCount = state.ammoCount;
+                tanksList[id].fuelCount = state.fuelCount;
             //} else {
                 tanksList[id].turret.rotation = state.rot;
            // }
@@ -183,14 +185,11 @@ Tank = function (index, game, player) {
     this.tank.body.immovable = false;
     this.tank.body.collideWorldBounds = true;
     this.tank.body.bounce.setTo(0, 0);
-
     this.tank.angle = 0;
 
     game.physics.arcade.velocityFromRotation(this.tank.rotation, 0, this.tank.body.velocity);
 
 };
-
-
 
 /*
 Turret_Gunner = Tank.extend(function (index, game, player)
@@ -220,9 +219,9 @@ Tank.prototype.update = function() {
             this.input.y = this.tank.y;
             this.input.angle = this.tank.angle;
             this.input.rot = this.turret.rotation;
-
+            this.input.ammoCount = this.ammoCount;
+            this.input.fuelCount = this.fuelCount;
             eurecaServer.handleKeys(this.input);
-
         }
     }
 
@@ -246,34 +245,6 @@ Tank.prototype.update = function() {
         }
     }
 
-    /*if (this.alive) {
-     if (isDriver) {
-     if (cursors.left.isDown) {
-     drive_rotate_Left();
-     }
-     else if (cursors.right.isDown) {
-     drive_rotate_Right();
-     }
-
-     if (cursors.up.isDown) {
-     this.currentSpeed = 300;
-     }
-     else {
-     if (this.currentSpeed > 0) {
-     this.currentSpeed -= 4;
-     }
-     }
-     } else {
-     if (A_Key.isDown) {
-     rotate_turret_left();
-     }
-     if (D_Key.isDown) {
-     rotate_turret_right();
-     }
-     }
-     }*/
-
-
     if (this.cursor.up) {
         //  The speed we'll travel at
         this.currentSpeed = 300;
@@ -295,8 +266,9 @@ Tank.prototype.update = function() {
         game.physics.arcade.velocityFromRotation(this.tank.rotation, this.currentSpeed, this.tank.body.velocity);
     } else { game.physics.arcade.velocityFromRotation(this.tank.rotation, 0, this.tank.body.velocity); }
 
-    if (spaceKey.isDown) { fire(); }
+    if (spaceKey.isDown) { this.fire(); }
 
+    player.cursor.fire = false;
     this.shadow.x = this.tank.x;
     this.shadow.y = this.tank.y;
     this.shadow.rotation = this.tank.rotation;
@@ -316,6 +288,42 @@ Tank.prototype.kill = function() {
     this.turret.kill();
     this.shadow.kill();
 }
+
+Tank.prototype.fire = function()
+{
+   if (this.ammoCount <= 0 || this.alive == false) return;
+
+    if (this.game.time.now > this.nextFire && this.bullets.countDead() > 0)
+    {
+        player.cursor.fire = true;
+        this.nextFire = this.game.time.now + this.fireRate;
+        var bullet = bullets.getFirstExists(false); //this.bullets.getFirstDead();
+        bullet.reset(this.turret.x, this.turret.y);
+        bullet.rotation = turret.rotation+1.5708;
+        game.physics.arcade.velocityFromRotation(player.turret.rotation, 500, bullet.body.velocity);
+        player.ammoCount--;
+    }
+}
+
+
+ function fire ()
+ {
+     /*if(player.ammoCount <= 0 || player.alive == false)
+     return;
+
+     if (game.time.now > nextFire && bullets.countDead() > 0)
+     {
+         player.cursor.fire = true;
+         nextFire = game.time.now + firingSpeed;
+         var bullet = bullets.getFirstExists(false);
+         bullet.reset(player.turret.x, player.turret.y);
+         bullet.rotation = turret.rotation+1.5708;
+         game.physics.arcade.velocityFromRotation(player.turret.rotation, 500, bullet.body.velocity);
+         player.ammoCount--;
+     }*/
+
+     player.fire();
+ }
 
 
 EnemyTank = function (index, game, player, bullets)
@@ -381,22 +389,6 @@ EnemyTank.prototype.update = function()
         }
     }
 };
-
-function fire ()
-{
-    if(player.ammoCount <= 0 || player.alive == false)
-        return;
-
-    if (game.time.now > nextFire && bullets.countDead() > 0)
-    {
-        nextFire = game.time.now + firingSpeed;
-        var bullet = bullets.getFirstExists(false);
-        bullet.reset(player.turret.x, player.turret.y);
-        bullet.rotation = turret.rotation+1.5708;
-        game.physics.arcade.velocityFromRotation(player.turret.rotation, 500, bullet.body.velocity);
-        player.ammoCount--;
-    }
-}
 
 var game = new Phaser.Game(800, 600, Phaser.AUTO, 'phaser-example', { preload: preload, create: eurecaClientSetup, update: update, render: render });
 
@@ -554,14 +546,30 @@ function update () {
             //player.turret = tanksList[i].turret;
 
             player.turret.rotation = tanksList[i].turret.rotation;
-            console.log((player.turret.rotation + " " +  tanksList[i].turret.rotation + " " + i));
+            tanksList[i].tank.x = player.tank.x;
+            tanksList[i].tank.y = player.tank.y;
+            tanksList[i].tank.angle = player.tank.angle;
+
+            player.ammoCount = tanksList[i].ammoCount;
+            tanksList[i].turret.bringToTop();
+           // console.log((player.tank.x + " " +  tanksList[i].tank.x + " " + i));
         } else {
-            player.tank = tanksList[i].tank;
+            player.fuelCount = tanksList[i].fuelCount;
+
+            player.tank.x = tanksList[i].tank.x;
+            player.tank.y = tanksList[i].tank.y;
+            player.tank.angle = tanksList[i].tank.angle;
+
             player.turret.x = tanksList[i].turret.x;
             player.turret.y = tanksList[i].turret.y;
+            tanksList[i].turret.rotation = player.turret.rotation;
+
+            tanksList[i].ammoCount = player.ammoCount;
+            player.turret.bringToTop();
+           // console.log((player.ammoCount + " " +  tanksList[i].ammoCount + " " + i));
             //player.y = tanksList[i].y;
-           // player.tank.angle = tanksList.angle;
-           // console.log((player.x + " " +  tanksList[i].x));
+            // player.tank.angle = tanksList.angle;
+            // console.log((player.x + " " +  tanksList[i].x));
         }
 
         var curBullets = tanksList[i].bullets;
@@ -572,8 +580,6 @@ function update () {
             if (j!=i)
             {
                 var targetTank = tanksList[j].tank;
-
-                //game.physics.arcade.overlap(curBullets, targetTank, bulletHitPlayer, null, this);
                 game.physics.arcade.overlap(tank, gas, collectGas, null, this);
                 game.physics.arcade.overlap(tank, pickups, collectAmmo, null, this);
 
@@ -582,7 +588,7 @@ function update () {
             {
                 tanksList[j].update();
             }
-            console.log(tanksList[i].turret.rotation + " " +  tanksList[j].turret.rotation + " " + player.turret.rotation);
+            //console.log(tanksList[i].turret.rotation + " " +  tanksList[j].turret.rotation + " " + player.turret.rotation);
         }
     }
 }
