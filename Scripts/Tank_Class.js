@@ -169,6 +169,7 @@ Tank = function (index, game, player) {
     this.fuelCount =200;
     this.currentSpeed =0;
     this.nextFire = 0;
+    this.fireRate = 3;
     this.dead = false;
     this.alive = true;
 
@@ -191,8 +192,7 @@ Tank = function (index, game, player) {
 
 };
 
-/*
-Turret_Gunner = Tank.extend(function (index, game, player)
+/*Turret_Gunner = Tank.extend(function (index, game, player)
 {
     this.tank.id = index;
     this.game = game;
@@ -225,50 +225,38 @@ Tank.prototype.update = function() {
         }
     }
 
-
-    if (this.cursor.left)
-    {
-        this.tank.angle -= 1;
-    } else if (this.cursor.right)
-    {
-        this.tank.angle += 1;
-    }
-
-    if (this.cursor.up)
-    {
-        //  The speed we'll travel at
-        this.currentSpeed = 300;
-    } else {
-        if (this.currentSpeed > 0)
-        {
-            this.currentSpeed -= 4;
+   //if(isDriver) {
+        if (this.cursor.left) {
+            this.tank.angle -= 1;
+        } else if (this.cursor.right) {
+            this.tank.angle += 1;
         }
-    }
 
-    if (this.cursor.up) {
-        //  The speed we'll travel at
-        this.currentSpeed = 300;
-    }
-    else {
-        if (this.currentSpeed > 0) {
-            this.currentSpeed -= 4;
+        if (this.cursor.up) {
+            //  The speed we'll travel at
+            this.currentSpeed = 300;
+        } else {
+            if (this.currentSpeed > 0) {
+                this.currentSpeed -= 4;
+            }
         }
-    }
+   // }
 
+    //if(isDriver) {
+        if (this.fuelCount <= 0) {
+            this.currentSpeed = 0;
+            this.tank.body.velocity = 0;
+        }
 
-    if (this.fuelCount <= 0) {
-        this.currentSpeed = 0;
-        this.tank.body.velocity = 0;
-    }
+        if (this.currentSpeed > 0 && this.fuelCount > 0) {
+            game.physics.arcade.velocityFromRotation(this.tank.rotation, this.currentSpeed, this.tank.body.velocity);
+        } else {
+            game.physics.arcade.velocityFromRotation(this.tank.rotation, 0, this.tank.body.velocity);
+        }
+   //}
+    if (spaceKey.isDown && isDriver == false) { this.fire(); }
 
-    if (this.currentSpeed > 0 && this.fuelCount > 0) {
-        //this.fuelCount -= 0.1;
-        game.physics.arcade.velocityFromRotation(this.tank.rotation, this.currentSpeed, this.tank.body.velocity);
-    } else { game.physics.arcade.velocityFromRotation(this.tank.rotation, 0, this.tank.body.velocity); }
-
-    if (spaceKey.isDown) { this.fire(); }
-
-    player.cursor.fire = false;
+    //player.cursor.fire = false;
     this.shadow.x = this.tank.x;
     this.shadow.y = this.tank.y;
     this.shadow.rotation = this.tank.rotation;
@@ -296,7 +284,8 @@ Tank.prototype.fire = function()
     if (this.game.time.now > this.nextFire && this.bullets.countDead() > 0)
     {
         player.cursor.fire = true;
-        this.nextFire = this.game.time.now + this.fireRate;
+        this.nextFire = this.game.time.now + 10; //this.fireRate;
+        console.log((this.game.time.now + " " + this.fireRate));
         var bullet = bullets.getFirstExists(false); //this.bullets.getFirstDead();
         bullet.reset(this.turret.x, this.turret.y);
         bullet.rotation = turret.rotation+1.5708;
@@ -460,8 +449,8 @@ function create () {
     //newWave();
     //spawnPickups();
     game.camera.follow(tank);
-    game.camera.deadzone = new Phaser.Rectangle(150, 150, 500, 300);
-    game.camera.focusOnXY(0, 0);
+    //game.camera.deadzone = new Phaser.Rectangle(150, 150, 500, 300);
+    //game.camera.focusOnXY(0, 0);
 
 
     if(isDriver == false) {
@@ -543,19 +532,18 @@ function update () {
 
         if(isDriver)
         {
-            //player.turret = tanksList[i].turret;
-
             player.turret.rotation = tanksList[i].turret.rotation;
             tanksList[i].tank.x = player.tank.x;
             tanksList[i].tank.y = player.tank.y;
             tanksList[i].tank.angle = player.tank.angle;
-
+            tanksList[i].currentSpeed = player.currentSpeed;
             player.ammoCount = tanksList[i].ammoCount;
+            tanksList[i].visible = false;
             tanksList[i].turret.bringToTop();
            // console.log((player.tank.x + " " +  tanksList[i].tank.x + " " + i));
         } else {
             player.fuelCount = tanksList[i].fuelCount;
-
+            player.currentSpeed = tanksList[i].currentSpeed;
             player.tank.x = tanksList[i].tank.x;
             player.tank.y = tanksList[i].tank.y;
             player.tank.angle = tanksList[i].tank.angle;
@@ -563,10 +551,11 @@ function update () {
             player.turret.x = tanksList[i].turret.x;
             player.turret.y = tanksList[i].turret.y;
             tanksList[i].turret.rotation = player.turret.rotation;
-
             tanksList[i].ammoCount = player.ammoCount;
             player.turret.bringToTop();
-           // console.log((player.ammoCount + " " +  tanksList[i].ammoCount + " " + i));
+            tanksList[i].visible = false;
+
+            //console.log((player.ammoCount + " " +  tanksList[i].ammoCount + " " + i));
             //player.y = tanksList[i].y;
             // player.tank.angle = tanksList.angle;
             // console.log((player.x + " " +  tanksList[i].x));
