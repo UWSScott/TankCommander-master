@@ -123,6 +123,8 @@ var eurecaClientSetup = function() {
                 tanksList[id].tank.angle = state.angle;
                 tanksList[id].ammoCount = state.ammoCount;
                 tanksList[id].fuelCount = state.fuelCount;
+                //tanksList[id].currentSpeed = state.currentSpeed;
+                //tanksList[id]. = state.fuelCount;
             //} else {
                 tanksList[id].turret.rotation = state.rot;
            // }
@@ -161,7 +163,6 @@ Tank = function (index, game, player) {
     this.bullets.setAll('outOfBoundsKill', true);
     this.bullets.setAll('checkWorldBounds', true);
 
-
     this.damage =5; //10
     this.armour =5; //10
 
@@ -169,7 +170,7 @@ Tank = function (index, game, player) {
     this.fuelCount =200;
     this.currentSpeed =0;
     this.nextFire = 0;
-    this.fireRate = 3;
+    this.fireRate = 500;
     this.dead = false;
     this.alive = true;
 
@@ -221,6 +222,7 @@ Tank.prototype.update = function() {
             this.input.rot = this.turret.rotation;
             this.input.ammoCount = this.ammoCount;
             this.input.fuelCount = this.fuelCount;
+
             eurecaServer.handleKeys(this.input);
         }
     }
@@ -254,7 +256,7 @@ Tank.prototype.update = function() {
             game.physics.arcade.velocityFromRotation(this.tank.rotation, 0, this.tank.body.velocity);
         }
    //}
-    if (spaceKey.isDown && isDriver == false) { this.fire(); }
+    if (this.cursor.fire) { this.fire(); }
 
     //player.cursor.fire = false;
     this.shadow.x = this.tank.x;
@@ -284,7 +286,7 @@ Tank.prototype.fire = function()
     if (this.game.time.now > this.nextFire && this.bullets.countDead() > 0)
     {
         player.cursor.fire = true;
-        this.nextFire = this.game.time.now + 10; //this.fireRate;
+        this.nextFire = this.game.time.now + this.fireRate;
         console.log((this.game.time.now + " " + this.fireRate));
         var bullet = bullets.getFirstExists(false); //this.bullets.getFirstDead();
         bullet.reset(this.turret.x, this.turret.y);
@@ -512,6 +514,10 @@ function update () {
     //do not update if client not ready
     if (!ready) return;
 
+    //turret.rotation = game.physics.arcade.angleToPointer(turret);
+    land.tilePosition.x = -game.camera.x;
+    land.tilePosition.y = -game.camera.y;
+
     player.input.left = cursors.left.isDown;
     player.input.right = cursors.right.isDown;
     player.input.up = cursors.up.isDown;
@@ -519,17 +525,12 @@ function update () {
     player.input.tx = game.input.x+ game.camera.x;
     player.input.ty = game.input.y+ game.camera.y;
 
-    //turret.rotation = game.physics.arcade.angleToPointer(turret);
-    land.tilePosition.x = -game.camera.x;
-    land.tilePosition.y = -game.camera.y;
-
-
     var tank_count = 0;
     for (var i in tanksList)
     {
         tank_count++;
         //if (!tanksList[i]) continue;
-
+        var curBullets = tanksList[i].bullets;
         if(isDriver)
         {
             player.turret.rotation = tanksList[i].turret.rotation;
@@ -540,7 +541,7 @@ function update () {
             player.ammoCount = tanksList[i].ammoCount;
             tanksList[i].visible = false;
             tanksList[i].turret.bringToTop();
-           // console.log((player.tank.x + " " +  tanksList[i].tank.x + " " + i));
+
         } else {
             player.fuelCount = tanksList[i].fuelCount;
             player.currentSpeed = tanksList[i].currentSpeed;
@@ -571,7 +572,7 @@ function update () {
                 var targetTank = tanksList[j].tank;
                 game.physics.arcade.overlap(tank, gas, collectGas, null, this);
                 game.physics.arcade.overlap(tank, pickups, collectAmmo, null, this);
-
+                //game.physics.arcade.overlap(curBullets, targetTank, collectAmmo, null, this);
             }
             if (tanksList[j].alive)
             {
@@ -580,6 +581,7 @@ function update () {
             //console.log(tanksList[i].turret.rotation + " " +  tanksList[j].turret.rotation + " " + player.turret.rotation);
         }
     }
+
 }
 
 function collectGas (player2, gas)
@@ -629,7 +631,7 @@ function rotateTurret_Right()
 
 function bulletHitPlayer (tank, bullet)
 {
-    bullet.kill();
+    //bullet.kill();
     //alert( "enemy name: "  + tank.name);
     if (getPenetration(game.rnd.integerInRange(1, 5), player.armour)) {
         player.alive = false;
@@ -640,7 +642,7 @@ function bulletHitPlayer (tank, bullet)
 }
 
 function bulletHitEnemy (tank, bullet) {
-    bullet.kill();
+    //bullet.kill();
     if (getPenetration(player.damage, enemies[tank.name].armour))
     {
         playerScore += 10;
