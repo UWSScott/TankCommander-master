@@ -1,9 +1,8 @@
+
+
 var myId=0;
-
 var land;
-
 var cursors;
-
 var shadow;
 var tank;
 var turret;
@@ -16,12 +15,13 @@ var tanksList;
 var explosions;
 var waveCount = 0;
 var playerScore = 0;
-
 var x,y;
 
 var A_Key;
 var D_Key;
 
+var gas_pickups = new Array();
+var ammo_pickups = new Array();
 var pickups;
 var gas;
 
@@ -50,6 +50,7 @@ var drive_Rotate_Button_R;
 
 var gas_pickups = new Array();
 var ammo_pickups = new Array();
+
 var funvariable  = 0;
 
 var isDriver = true;
@@ -63,6 +64,145 @@ var nextFire = 0;
 
 var ready = false;
 var eurecaServer;
+var locationOfData;
+
+var locationT = {
+    x:40,
+    y:50
+}
+
+var fb = new Firebase("https://tankcommander.firebaseio.com/"), locations = {}, result_box = document.getElementById("result");
+
+if (fb)
+{
+    // This gets a reference to the 'location" node.
+    //console.log(locationOfData);
+    var fbLocation = fb.child("/location");
+    // Now we can install event handlers for nodes added, changed and removed.
+    fbLocation.on('child_added', function(sn){
+        var data = sn.val();
+        console.dir({'added': data});
+        locations[sn.key()] = data;
+    });
+    fbLocation.on('child_changed', function(sn){
+        var data = sn.val();
+        locations[sn.key()] = data;
+        console.dir({'moved': data})
+    });
+    fbLocation.on('child_removed', function(sn){
+        var data = sn.val();
+        delete locations[sn.key()];
+        console.dir(({'removed': data}));
+    });
+}
+
+function getKey(name){
+    var loc;
+    for(loc in locations){
+        if(locations[loc].player === name){
+            return loc;
+        }
+    }
+    return null;
+}
+function addLocation(database, x, y) {
+    // Prevent a duplicate name...
+    if (getKey(name)) return;
+    // Name is valid - go ahead and add it...
+    fb.child("/location").push({
+        player: name,
+        x: x,
+        y: y,
+        timestamp: Firebase.ServerValue.TIMESTAMP
+    }, function(err) {
+        if(err) console.dir(err);
+    });
+}
+
+function pickupItems(database, name, x, y) {
+    if (getKey(name)) return;
+    locationOfData = database;
+    fb.child("/"+database).push({
+        itemName: name,
+        x: x,
+        y: y,
+    }, function(err) {
+        if(err) console.dir(err);
+    });
+}
+
+function getPickupItems(database, name){
+    console.log("1");
+    var messagesRef = new Firebase("https://tankcommander.firebaseio.com/"+database);
+    console.log("2");
+    messagesRef.once("value", function(allMessagesSnapshot) {
+        console.log("3");
+        allMessagesSnapshot.forEach(function(messageSnapshot) {
+            console.log("4");
+            console.log(name + "   " + messageSnapshot.child("itemName").val() + " same?: "+ (messageSnapshot.child("itemName").val() == name));
+            if(messageSnapshot.child("itemName").val() == name) {
+                // Will be called with a messageSnapshot for each child under the /messages/ node
+                var key = messageSnapshot.key();  // e.g. "-JqpIO567aKezufthrn8"
+                var uid = messageSnapshot.child("x").val();  // e.g. "barney"
+                var text = messageSnapshot.child("y").val();  // e.g. "Welcome to Bedrock City!"
+                locationT.x = uid;
+                locationT.y = text;
+                console.log("fadsfadsfddsadsfdas");
+                return locationT;
+            }
+        });
+    });
+
+    return locationT;
+
+   /* var loc;
+    for(loc in locations){
+        if(locations[loc].itemName === name){
+            return loc;
+        }
+    }
+    return null;*/
+
+}
+
+/*
+function getPickupItems(database, name){
+    var loc;
+   // var locationD =  fb.child("GasItems").;
+    //fb.child(database.on("value", function(snapshot){ alert(snapshot.value.itemName)); });
+    //ref.on("child_added", function(snapshot, prevChildKey) {
+   //     alert(snapshot.children[0].itemName); // Alerts "San Francisco"
+   // });
+    console.log(locationD);
+    console.log(locationD[0]);
+    for(loc in locationD){
+        console.log(loc.itemName);
+        if(loc.itemName === name){
+            console.log(("dsfakadsjfkadsfkds"));
+            return loc;
+        }
+    }
+    return null;
+}*/
+
+function updateLocation(ref, database, name, x, y){
+    fb.child("/"+database+"/" + ref).set({
+        player: name,
+        x: x,
+        y: y,
+        timestamp: Firebase.ServerValue.TIMESTAMP
+    }, function(err) {
+        if(err) {
+            console.dir(err);
+        }
+    });
+}
+function removeLocation(ref){
+    fb.child("/location/" + ref).set(null, function(err){
+        if (err) console.dir(err);
+    });
+}
+
 //this function will handle client communication with the server
 var eurecaClientSetup = function() {
     //create an instance of eureca.io client
@@ -72,9 +212,8 @@ var eurecaClientSetup = function() {
         eurecaServer = proxy;
     });
 
-
     //methods defined under "exports" namespace become available in the server side
-    eurecaClient.exports.setId = function(id, size)
+    eurecaClient.exports.setId = function(id, size)//, s_ammoPickups, s_gasPickups)
     {
         //create() is moved here to make sure nothing is created before uniq id assignation
         myId = id;
@@ -87,6 +226,12 @@ var eurecaClientSetup = function() {
             isDriver = true;
 
         create();
+        /*if(s_ammoPickups != null && s_gasPickups != null)
+        {
+            player.ammo_pickups = s_ammoPickups;
+            player.gas_pickups = s_gasPickups;
+        }*/
+
         eurecaServer.handshake();
         ready = true;
     }
@@ -107,8 +252,7 @@ var eurecaClientSetup = function() {
         //console.log('SPAWN');
 
       var tnk = new Tank(i, game, tank);
-       //var tnk = new Turret_Gunner(i, game, tank);
-       tanksList[i] = tnk;
+        tanksList[i] = tnk;
     }
 
     eurecaClient.exports.updateState = function(id, state)
@@ -123,9 +267,8 @@ var eurecaClientSetup = function() {
                 tanksList[id].tank.angle = state.angle;
                 tanksList[id].ammoCount = state.ammoCount;
                 tanksList[id].fuelCount = state.fuelCount;
-                //tanksList[id].currentSpeed = state.currentSpeed;
-                //tanksList[id]. = state.fuelCount;
-            //} else {
+               // tanksList[id].ammo_pickups = state.ammo_pickups;
+               // tanksList[id].gas_pickups = state.gas_pickups;
                 tanksList[id].turret.rotation = state.rot;
            // }
             tanksList[id].update();
@@ -133,7 +276,8 @@ var eurecaClientSetup = function() {
     }
 }
 
-Tank = function (index, game, player) {
+Tank = function (index, game, player)
+{
     this.cursor = {
         left:false,
         right:false,
@@ -146,6 +290,8 @@ Tank = function (index, game, player) {
         right:false,
         up:false,
         fire:false
+        //ammoCount
+        //fuelCount
     }
 
     this.x = 0;
@@ -165,6 +311,9 @@ Tank = function (index, game, player) {
 
     this.damage =5; //10
     this.armour =5; //10
+
+    //this.ammo_pickups = new Array();
+    //this.gas_pickups = new Array();
 
     this.ammoCount =20;
     this.fuelCount =200;
@@ -222,7 +371,8 @@ Tank.prototype.update = function() {
             this.input.rot = this.turret.rotation;
             this.input.ammoCount = this.ammoCount;
             this.input.fuelCount = this.fuelCount;
-
+            //this.input.ammo_pickups = this.ammo_pickups;
+            //this.input.gas_pickups = this.gas_pickups;
             eurecaServer.handleKeys(this.input);
         }
     }
@@ -402,6 +552,8 @@ function preload ()
 
 function create () {
 
+    //addLocation("afsfad", 2, 3);
+
     //  Resize our game world to be a 2000 x 2000 square
     game.world.setBounds(-1000, -1000, 2000, 2000);
     game.stage.disableVisibilityChange  = true;
@@ -443,6 +595,46 @@ function create () {
     pickups.enableBody = true;
     gas = game.add.group();
     gas.enableBody = true;
+    spawnPickups();
+
+    if(isDriver) {
+        for (var i = 0; i <= 4; i++) {
+            pickupItems("GasItems", "Gas" + i, gas_pickups[i].x, gas_pickups[i].y);
+        }
+        for (var i = 0; i <= 4; i++) {
+            pickupItems("ItemPickups", "Items" + i, ammo_pickups[i].x, ammo_pickups[i].y);
+        }
+    } else {
+        /*for (var i = 0; i <= 4; i++) {
+            pickupItems("GasItems", "Gas" + i, gas_pickups[i].x, gas_pickups[i].y);
+        }
+        for (var i = 0; i <= 4; i++) {
+            pickupItems("ItemPickups", "Items" + i, ammo_pickups[i].x, ammo_pickups[i].y);
+        }*/
+
+        var loc;
+        for (var i = 0; i <= 4; i++) {
+            loc = getPickupItems("GasItems", "Gas" + i);
+            gas_pickups[i].x = loc.x;
+            gas_pickups[i].y = loc.y;
+            console.log(gas_pickups[i].x + " " + gas_pickups[i].y + " // " + loc.x + " " + loc.y);
+        }
+        for (var i = 0; i <= 4; i++) {
+            loc = getPickupItems("ItemPickups", "Items" + i);
+            ammo_pickups[i].x = loc.x;
+            ammo_pickups[i].y = loc.y;
+        }
+    }
+
+
+    //console.log(gas_pickups[0].x);
+
+    //for() pickupItems
+   // var index_count = 0;
+   // for (var item in gas_pickups) { index_count++; pickupItems("GasItems", "Gas"+index_count, item.x, index_count) }
+   // index_count = 0;
+   // for (var item in ammo_pickups) { index_count++; pickupItems("AmmoItems", "Ammo"+index_count, item.x, item.y) }
+    //console.log(index_count);
 
     this.shadow.anchor.set(0.5);
     this.tank.anchor.set(0.5);
@@ -474,40 +666,11 @@ function create () {
         drive_Rotate_Button_L.fixedToCamera = true;
         drive_Rotate_Button_R.fixedToCamera = true;
     }
-}
 
+    //player.ammo_pickups = ammo_pickups;
+    //player.gas_pickups = gas_pickups;
 
-/*
- pickups = game.add.group();
- pickups.enableBody = true;
- gas = game.add.group();
- gas.enableBody = true;
-
- // newWave();
- //spawnPickups();
- game.camera.follow(tank);
-
-
- if(isDriver == false) {
- fire_Button = game.add.button(650, 450, 'fireButton', fire, this, 2, 1, 0);
- fire_Button.fixedToCamera = true;
-
- rotate_Button_L = game.add.button(10, 450, 'rotateButton_L', rotate_turret_left, this, 2, 1, 0);
- rotate_Button_R = game.add.button(200, 450, 'rotateButton_R', rotate_turret_right, this, 2, 1, 0);
- rotate_Button_L.fixedToCamera = true;
- rotate_Button_R.fixedToCamera = true;
- } else {
- drive_Button_U = game.add.button(650, 350, 'rotateButton_U', drive_forward, this, 2, 1, 0);
- drive_Button_D = game.add.button(650, 500, 'rotateButton_D', drive_pause, this, 2, 1, 0);
- drive_Button_U.fixedToCamera = true;
- drive_Button_D.fixedToCamera = true;
-
- drive_Rotate_Button_L = game.add.button(10, 450, 'rotateButton_L', drive_rotate_Left, this, 2, 1, 0);
- drive_Rotate_Button_R = game.add.button(200, 450, 'rotateButton_R', drive_rotate_Right, this, 2, 1, 0);
- drive_Rotate_Button_L.fixedToCamera = true;
- drive_Rotate_Button_R.fixedToCamera = true;
  }
- }*/
 
 
 function update () {
@@ -555,6 +718,15 @@ function update () {
             tanksList[i].ammoCount = player.ammoCount;
             player.turret.bringToTop();
             tanksList[i].visible = false;
+           // gas_pickups =  tanksList[i].gas_pickups;
+           // ammo_pickups =  tanksList[i].ammo_pickups;
+
+            //for(var z=0; z < tanksList[i].gas_pickups.size(); z++)
+            for (var z in tanksList[i].gas_pickups)
+            {
+                console.log(("local: " + gas_pickups[z] + " opp: " + tanksList[i].gas_pickups[z]));
+                gas_pickups[z] = tanksList[i].gas_pickups[z];
+            }
 
             //console.log((player.ammoCount + " " +  tanksList[i].ammoCount + " " + i));
             //player.y = tanksList[i].y;
