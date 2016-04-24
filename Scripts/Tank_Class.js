@@ -143,21 +143,23 @@ function pickupItems(database, name, x, y) {
     });
 }
 
-function sendTankInfo(database, name, x, y, rotation, tankAlive) {
+function sendTankInfo(database, name, x, y, rotation, currentSpeed, damage, armour) {
     if (getKey(name)) return;
     fb.child("/"+database).push({
         tankID: name,
         x: x,
         y: y,
         rotation: rotation,
-        //tankAlive: tankAlive
+        speed: currentSpeed,
+        turretDmg: damage,
+        tankArm: armour
     }, function(err) {
         if(err) console.dir(err);
     });
 }
 
 
-function setTankInformation(database, name, x, y, rotation, tankAlive) {
+function setTankInformation(database, name, x, y, rotation, currentSpeed, damage, armour) {
     //if (getKey(name)) return;
    // console.log(rotation);
     fb.child("/"+database+"/"+name).set({
@@ -165,7 +167,9 @@ function setTankInformation(database, name, x, y, rotation, tankAlive) {
         x: x,
         y: y,
         rotation: rotation,
-        //tankAlive: tankAlive
+        speed: currentSpeed,
+        turretDmg: damage,
+        tankArm: armour
     });
 }
 
@@ -212,10 +216,16 @@ function getTankInformation(database, name, index)
         var xPos = allMessagesSnapshot.child("x").val();
         var yPos = allMessagesSnapshot.child("y").val();
         var rotation = allMessagesSnapshot.child("rotation").val();
+        var turretDMG = allMessagesSnapshot.child("turretDmg").val();
+        var tankARM = allMessagesSnapshot.child("tankArm").val();
+
         console.log("HERE "+ xPos + " " + yPos + " " + rotation);
+
         enemies[0].tank.x = xPos;
         enemies[0].tank.y = yPos;
-        enemies[0].rotation = rotation;
+        enemies[0].tank.angle = rotation;
+        enemies[0].damage = turretDMG;
+        enemies[0].armour = tankARM;
     });
 
 
@@ -580,7 +590,7 @@ EnemyTank = function (index, game, player, bullets)
     this.nextFire = 0;
     this.alive = true;
 
-    this.damage = game.rnd.integerInRange(1, 5);
+    this.turretdamage = game.rnd.integerInRange(1, 5);
     this.armour = game.rnd.integerInRange(1, 5);
 
     this.shadow = game.add.sprite(x, y, 'shadow');
@@ -593,12 +603,12 @@ EnemyTank = function (index, game, player, bullets)
 
     this.tank.name = index.toString();
     game.physics.enable(this.tank, Phaser.Physics.ARCADE);
-    this.tank.body.immovable = false;
+    this.tank.body.immovable = true;
     this.tank.body.collideWorldBounds = true;
     this.tank.body.bounce.setTo(1, 1);
 
     this.tank.angle = game.rnd.angle();
-    game.physics.arcade.velocityFromRotation(this.tank.rotation, 100, this.tank.body.velocity);
+    //game.physics.arcade.velocityFromRotation(this.tank.rotation, 100, this.tank.body.velocity);
 
 };
 
@@ -618,6 +628,7 @@ EnemyTank.prototype.update = function()
     this.turret.x = this.tank.x;
     this.turret.y = this.tank.y;
     this.turret.rotation = this.game.physics.arcade.angleBetween(this.tank, this.player);
+    game.physics.arcade.velocityFromRotation(this.tank.rotation, 100, this.tank.body.velocity);
 
     if (this.game.physics.arcade.distanceBetween(this.tank, this.player) < 300)
     {
@@ -714,7 +725,7 @@ function create () {
     {
         for (var i = 0; i < enemies.length; i++)
         {
-            sendTankInfo("TankData", enemies[i].tank.name, enemies[i].tank.x, enemies[i].tank.y, enemies[i].tank.angle, enemies[i].alive);
+            sendTankInfo("TankData", enemies[i].tank.name, enemies[i].tank.x, enemies[i].tank.y, enemies[i].tank.angle, enemies[i].tank.body.velocity, enemies[i].turretdamage, enemies[i].armour);
         }
     } else {
         for (var i = 0; i < enemies.length; i++)
@@ -763,6 +774,11 @@ function create () {
         drive_Rotate_Button_L.fixedToCamera = true;
         drive_Rotate_Button_R.fixedToCamera = true;
     }
+
+    if(isDriver)
+        game.time.events.add(Phaser.Timer.SECOND * 4, tankTimedUpdate, this);
+    else
+        game.time.events.add(Phaser.Timer.SECOND * 5, tankTimedUpdate, this);
  }
 
 
@@ -830,11 +846,9 @@ function update () {
             {
                 tanksList[j].update();
             }
-            //console.log(tanksList[i].turret.rotation + " " +  tanksList[j].turret.rotation + " " + player.turret.rotation);
         }
     }
 
-    //game.physics.arcade.overlap(enemyBullets, tank, bulletHitPlayer, null, this);
     enemiesAlive = 0;
 
     for (var i = 0; i < enemies.length; i++) {
@@ -845,20 +859,17 @@ function update () {
             enemies[i].update();
         }
 
-        if(isDriver)
+        /*if(isDriver)
         {
             setTankInformation("TankData", enemies[i].tank.name, enemies[i].tank.x, enemies[i].tank.y, enemies[i].tank.angle, enemies[i]) //database, name, xPos, yPos, rotation, tankAlive)
         } else {
            // console.log("BEFORE " + enemies[i].tank.name + " xPos: " + enemies[i].tank.x + "  yPos: " + enemies[i].tank.y)
             getTankInformation("TankData", enemies[i].tank.name, i);
            // console.log("AFTER " + enemies[i].tank.name + " xPos: " + enemies[i].tank.x + "  yPos: " + enemies[i].tank.y)
-        }
-
+        }*/
     }
     
     if (enemiesAlive == 0) { newWave(); }
-
-    
 }
 
 function collectGas (player2, gas)
@@ -958,12 +969,20 @@ function render () {
         game.debug.text('Fuel: ' + player.fuelCount, 600, 60);
         game.debug.text('Player Score: ' + playerScore, 600, 75);
         if(enemies[0] != null)
-            game.debug.text('Enemy: ' + enemies[0].tank.x + " " + enemies[0].tank.y, 50, 100);
+            game.debug.text('Enemy: ' + enemies[0].tank.x + " " + enemies[0].tank.y + " rot: " + enemies[0].tank.angle, 50, 100);
     } else {
         game.debug.text('No more fun variable for you.' , 270, 300);
     }
 }
 
+function tankTimedUpdate()
+{
+    for (var i = 0; i < enemies.length; i++)
+    {
+        if(isDriver){ setTankInformation("TankData", enemies[i].tank.name, enemies[i].tank.x, enemies[i].tank.y, enemies[i].tank.angle, enemies[i].tank.body.velocity, enemies[i].turretdamage, enemies[i].armour); game.time.events.add(Phaser.Timer.SECOND * 4, tankTimedUpdate, this); }
+        else { getTankInformation("TankData", enemies[i].tank.name, i); game.time.events.add(Phaser.Timer.SECOND * 5, tankTimedUpdate, this); }
+    }
+}
 
 function getPenetration(damageValue, armourValue)
 {
