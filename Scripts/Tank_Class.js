@@ -74,42 +74,27 @@ var locationT = {
 var fb = new Firebase("https://tankcommander.firebaseio.com/"), locations = {}, result_box = document.getElementById("result");
 var ItemLocation = fb.child("/ItemPickups")
 
-if (fb)
-{
+if (fb) {
     // This gets a reference to the 'location" node.
     //console.log(locationOfData);
-    var fbLocation = fb.child("/location");
+   /* var fbLocation = fb.child("/location");
     // Now we can install event handlers for nodes added, changed and removed.
-    fbLocation.on('child_added', function(sn){
+    fbLocation.on('child_added', function (sn) {
         var data = sn.val();
         console.dir({'added': data});
         locations[sn.key()] = data;
     });
-    fbLocation.on('child_changed', function(sn){
+    fbLocation.on('child_changed', function (sn) {
         var data = sn.val();
         locations[sn.key()] = data;
         console.dir({'moved': data})
     });
-    fbLocation.on('child_removed', function(sn){
+    fbLocation.on('child_removed', function (sn) {
         var data = sn.val();
         delete locations[sn.key()];
         console.dir(({'removed': data}));
-    });
-
-    fb.on('value', function(notesSnapshot) {
-        notesSnapshot.forEach(function(noteSnapshot) {
-            console.log(noteSnapshot.val()+ " ONNNN ");
-        });
-    });
-
-    fb.once('value', function(notesSnapshot) {
-        notesSnapshot.forEach(function(noteSnapshot) {
-            console.log(noteSnapshot.val());
-        });
-    });
+    });*/
 }
-
-
 
 /*ItemLocation.on("value", function(allMessagesSnapshot) {
     allMessagesSnapshot.forEach(function(messageSnapshot) {
@@ -123,11 +108,6 @@ if (fb)
     });
 });*/
 
-//var Item_Location = new Firebase("https://tankcommander.firebaseio.com/ItemPickups");
-fb.once("value", function(snapshot, itemNa) {
-    var name = snapshot.child("ItemPickups").child("itemNa").val();
-    console.log(name); // "Fred"
-});
 
 function getKey(name){
     var loc;
@@ -163,51 +143,154 @@ function pickupItems(database, name, x, y) {
     });
 }
 
+function sendTankInfo(database, name, x, y, rotation, tankAlive) {
+    if (getKey(name)) return;
+    fb.child("/"+database).push({
+        tankID: name,
+        x: x,
+        y: y,
+        rotation: rotation,
+        //tankAlive: tankAlive
+    }, function(err) {
+        if(err) console.dir(err);
+    });
+}
 
-function getPickupItems(database, name, index, arr){
-    var messagesRef = fb.child("/"+database); //ebase("https://tankcommander.firebaseio.com/"+database);
 
-        messagesRef.on("value", function (allMessagesSnapshot) {
-            allMessagesSnapshot.forEach(function (messageSnapshot) {
-                if (messageSnapshot.child("itemName").val() == name) {
-                    var uid = messageSnapshot.child("x").val();  // e.g. "barney"
-                    var text = messageSnapshot.child("y").val();  // e.g. "Welcome to Bedrock City!"
-                    ammo_pickups[index].x = uid;
-                    ammo_pickups[index].y = text;
-                    console.log("done " + ammo_pickups[index].x + " " + ammo_pickups[index].y + " uid " + uid + " " + text);
-                }
-            });
-        });
-
-   /* var loc;
-    for(loc in locations){
-        if(locations[loc].itemName === name){
-            return loc;
-        }
-    }
-    return null;*/
-
+function setTankInformation(database, name, x, y, rotation, tankAlive) {
+    //if (getKey(name)) return;
+   // console.log(rotation);
+    fb.child("/"+database+"/"+name).set({
+        tankID: name,
+        x: x,
+        y: y,
+        rotation: rotation,
+        //tankAlive: tankAlive
+    });
 }
 
 /*
-function getPickupItems(database, name){
-    var loc;
-   // var locationD =  fb.child("GasItems").;
-    //fb.child(database.on("value", function(snapshot){ alert(snapshot.value.itemName)); });
-    //ref.on("child_added", function(snapshot, prevChildKey) {
-   //     alert(snapshot.children[0].itemName); // Alerts "San Francisco"
-   // });
-    console.log(locationD);
-    console.log(locationD[0]);
-    for(loc in locationD){
-        console.log(loc.itemName);
-        if(loc.itemName === name){
-            console.log(("dsfakadsjfkadsfkds"));
-            return loc;
-        }
-    }
-    return null;
-}*/
+function setTankInformation(database, name, xPos, yPos, rotation, tankAlive)
+{
+    var messagesRef = fb.child("/"+database);
+    console.log((messagesRef));
+    messagesRef.on("value", function (allMessagesSnapshot) {
+        console.log((messagesRef.toString()));
+        allMessagesSnapshot.forEach(function (messageSnapshot) {
+            console.log((allMessagesSnapshot.toString()));
+            if (messageSnapshot.child("tankID").val() == name) {
+
+                /*messageSnapshot.update({
+                    tankID: name,
+                    x: 40,
+                    y: 20,
+                    rotation: 2,
+                    tankAlive: true
+                });
+
+                //var path = messageSnapshot.child("y").toString();
+                //console.log(path);
+                //fb.child(path).child("y").set(yPos);
+               // messageSnapshot.child("x").update(xPos);
+                //messageSnapshot.child("y").set(yPos);
+                //messageSnapshot.child("rotation").set(rotation);
+                //messageSnapshot.child("isAlive").set(tankAlive);
+
+                var dataX = messageSnapshot.child("x").val();
+                console.log(messageSnapshot.child("tankID").val() + " dataX : " + dataX + " - " + xPos);
+
+            }
+        });
+    });
+}
+*/
+
+function getTankInformation(database, name, index)
+{
+   var messagesRef = fb.child("/"+database+"/"+name);
+    messagesRef.on("value", function (allMessagesSnapshot) {
+        var xPos = allMessagesSnapshot.child("x").val();
+        var yPos = allMessagesSnapshot.child("y").val();
+        var rotation = allMessagesSnapshot.child("rotation").val();
+        console.log("HERE "+ xPos + " " + yPos + " " + rotation);
+        enemies[0].tank.x = xPos;
+        enemies[0].tank.y = yPos;
+        enemies[0].rotation = rotation;
+    });
+
+
+
+    /*messagesRef.on("value", function (allMessagesSnapshot) {
+        allMessagesSnapshot.forEach(function (messageSnapshot) {
+            if (messageSnapshot.child("tankID").val() == name) {
+                var xPos = messageSnapshot.child("x").val();
+                var yPos = messageSnapshot.child("y").val();
+                var rotation = messageSnapshot.child("rotation").val();
+                console.log("HERE "+ xPos + " " + yPos + " " + rotation);
+                enemies[index].tank.x = xPos;
+                enemies[index].tank.y = yPos;
+                enemies[index].rotation = rotation;
+            }
+        });
+    });*/
+}
+
+function getPickupItems(database, name, index, arr){
+    var messagesRef = fb.child("/"+database);
+        messagesRef.on("value", function (allMessagesSnapshot) {
+            allMessagesSnapshot.forEach(function (messageSnapshot) {
+                if (messageSnapshot.child("itemName").val() == name) {
+                    var xPos = messageSnapshot.child("x").val();
+                    var yPos = messageSnapshot.child("y").val();
+                    if (arr === "AMMO") {
+                        ammo_pickups[index].x = xPos;
+                        ammo_pickups[index].y = yPos;
+                    } else if (arr === "FUEL") {
+                        gas_pickups[index].x = xPos;
+                        gas_pickups[index].y = yPos;
+                    } else {
+                        console.log(("DISASTER!"));
+                    }
+                }
+            });
+        });
+}
+
+function clearPickupItems(database)
+{
+    fb.child("/"+database).remove();
+  /*  var messagesRef = fb.child("/"+database);
+    console.log((messagesRef.text));
+
+    messagesRef.on("value", function (allMessagesSnapshot)
+    {
+        allMessagesSnapshot.forEach(function (messageSnapshot)
+        {
+            fb.child("/"+database).remove();
+        });
+    });*/
+}
+
+function updateTankData(database)
+{
+    var messagesRef = fb.child("/"+database);
+    //console.log((messagesRef.text));
+
+     messagesRef.on("value", function (allMessagesSnapshot)
+     {
+         allMessagesSnapshot.forEach(function (messageSnapshot)
+         {
+            fb.child("/"+database).remove();
+
+         });
+     });
+}
+
+function removeLocation(ref){
+    fb.child("/"+ ref).set(null, function(err){
+        if (err) console.dir(err);
+    });
+}
 
 function updateLocation(ref, database, name, x, y){
     fb.child("/"+database+"/" + ref).set({
@@ -219,11 +302,6 @@ function updateLocation(ref, database, name, x, y){
         if(err) {
             console.dir(err);
         }
-    });
-}
-function removeLocation(ref){
-    fb.child("/location/" + ref).set(null, function(err){
-        if (err) console.dir(err);
     });
 }
 
@@ -453,8 +531,7 @@ Tank.prototype.kill = function() {
     this.shadow.kill();
 }
 
-Tank.prototype.fire = function()
-{
+Tank.prototype.fire = function() {
    if (this.ammoCount <= 0 || this.alive == false) return;
 
     if (this.game.time.now > this.nextFire && this.bullets.countDead() > 0)
@@ -547,7 +624,7 @@ EnemyTank.prototype.update = function()
         if (this.game.time.now > this.nextFire /*&& this.bullets.countDead() > 0*/)
         {
             this.nextFire = this.game.time.now + this.fireRate;
-            var bullet = this.bullets.getFirstDead();
+            var bullet = this.bullets.getFirstExists(false); //this.bullets.getFirstDead();
             bullet.reset(this.turret.x, this.turret.y);
             bullet.rotation = this.turret.rotation+1.5708;
             game.physics.arcade.velocityFromRotation(this.turret.rotation, 500, bullet.body.velocity);
@@ -575,8 +652,6 @@ function preload ()
 }
 
 function create () {
-
-    //addLocation("afsfad", 2, 3);
 
     //  Resize our game world to be a 2000 x 2000 square
     game.world.setBounds(-1000, -1000, 2000, 2000);
@@ -619,7 +694,35 @@ function create () {
     pickups.enableBody = true;
     gas = game.add.group();
     gas.enableBody = true;
-    spawnPickups();
+
+    this.shadow.anchor.set(0.5);
+    this.tank.anchor.set(0.5);
+    this.turret.anchor.set(0.3, 0.5);
+
+    enemyBullets = game.add.group();
+    enemyBullets.enableBody = true;
+    enemyBullets.physicsBodyType = Phaser.Physics.ARCADE;
+    enemyBullets.createMultiple(100, 'bullet');
+    enemyBullets.setAll('anchor.x', 0.5);
+    enemyBullets.setAll('anchor.y', 0.5);
+    enemyBullets.setAll('outOfBoundsKill', true);
+    enemyBullets.setAll('checkWorldBounds', true);
+
+    newWave();
+
+    if(isDriver)
+    {
+        for (var i = 0; i < enemies.length; i++)
+        {
+            sendTankInfo("TankData", enemies[i].tank.name, enemies[i].tank.x, enemies[i].tank.y, enemies[i].tank.angle, enemies[i].alive);
+        }
+    } else {
+        for (var i = 0; i < enemies.length; i++)
+        {
+            getTankInformation("TankData", enemies[i].tank.name, i); //"TankData", enemies[i].tank.name, enemies[i].tank.x, enemies[i].tank.y, enemies[i].tank.rotation);
+           // console.log(enemies[i].tank.name + " " + enemies[i].tank.x + " " + enemies[i].tank.y + " " + enemies[i].tank.angle);
+        }
+    }
 
     if(isDriver) {
         for (var i = 0; i <= 4; i++) {
@@ -629,46 +732,16 @@ function create () {
             pickupItems("ItemPickups", "Items" + i, ammo_pickups[i].x, ammo_pickups[i].y);
         }
     } else {
-        /*for (var i = 0; i <= 4; i++) {
-            pickupItems("GasItems", "Gas" + i, gas_pickups[i].x, gas_pickups[i].y);
+        for (var i = 0; i <= 4; i++) {
+            getPickupItems("GasItems", "Gas" + i, i, "FUEL");
         }
         for (var i = 0; i <= 4; i++) {
-            pickupItems("ItemPickups", "Items" + i, ammo_pickups[i].x, ammo_pickups[i].y);
-        }*/
-
-        var loc;
-        /*for (var i = 0; i <= 4; i++) {
-            loc = getPickupItems("GasItems", "Gas" + i);
-            gas_pickups[i].x = loc.x;
-            gas_pickups[i].y = loc.y;
-            console.log(gas_pickups[i].x + " " + gas_pickups[i].y + " // " + loc.x + " " + loc.y);
-        }*/
-        for (var i = 0; i <= 4; i++) {
-            getPickupItems("ItemPickups", "Items" + i, i, ammo_pickups);
-            console.log("ammo pickups");
+            getPickupItems("ItemPickups", "Items" + i, i, "AMMO");
         }
     }
 
-    //fb.once();
-    //function something(snapshot)
-    //console.log(gas_pickups[0].x);
 
-    //for() pickupItems
-   // var index_count = 0;
-   // for (var item in gas_pickups) { index_count++; pickupItems("GasItems", "Gas"+index_count, item.x, index_count) }
-   // index_count = 0;
-   // for (var item in ammo_pickups) { index_count++; pickupItems("AmmoItems", "Ammo"+index_count, item.x, item.y) }
-    //console.log(index_count);
-
-    this.shadow.anchor.set(0.5);
-    this.tank.anchor.set(0.5);
-    this.turret.anchor.set(0.3, 0.5);
-
-    //newWave();
-    //spawnPickups();
     game.camera.follow(tank);
-    //game.camera.deadzone = new Phaser.Rectangle(150, 150, 500, 300);
-    //game.camera.focusOnXY(0, 0);
 
 
     if(isDriver == false) {
@@ -690,10 +763,6 @@ function create () {
         drive_Rotate_Button_L.fixedToCamera = true;
         drive_Rotate_Button_R.fixedToCamera = true;
     }
-
-    //player.ammo_pickups = ammo_pickups;
-    //player.gas_pickups = gas_pickups;
-
  }
 
 
@@ -712,6 +781,8 @@ function update () {
     player.input.tx = game.input.x+ game.camera.x;
     player.input.ty = game.input.y+ game.camera.y;
 
+
+
     var tank_count = 0;
     for (var i in tanksList)
     {
@@ -728,7 +799,6 @@ function update () {
             player.ammoCount = tanksList[i].ammoCount;
             tanksList[i].visible = false;
             tanksList[i].turret.bringToTop();
-
         } else {
             player.fuelCount = tanksList[i].fuelCount;
             player.currentSpeed = tanksList[i].currentSpeed;
@@ -742,20 +812,6 @@ function update () {
             tanksList[i].ammoCount = player.ammoCount;
             player.turret.bringToTop();
             tanksList[i].visible = false;
-           // gas_pickups =  tanksList[i].gas_pickups;
-           // ammo_pickups =  tanksList[i].ammo_pickups;
-
-            //for(var z=0; z < tanksList[i].gas_pickups.size(); z++)
-            for (var z in tanksList[i].gas_pickups)
-            {
-                console.log(("local: " + gas_pickups[z] + " opp: " + tanksList[i].gas_pickups[z]));
-                gas_pickups[z] = tanksList[i].gas_pickups[z];
-            }
-
-            //console.log((player.ammoCount + " " +  tanksList[i].ammoCount + " " + i));
-            //player.y = tanksList[i].y;
-            // player.tank.angle = tanksList.angle;
-            // console.log((player.x + " " +  tanksList[i].x));
         }
 
         var curBullets = tanksList[i].bullets;
@@ -778,6 +834,31 @@ function update () {
         }
     }
 
+    //game.physics.arcade.overlap(enemyBullets, tank, bulletHitPlayer, null, this);
+    enemiesAlive = 0;
+
+    for (var i = 0; i < enemies.length; i++) {
+        if (enemies[i].alive) {
+            enemiesAlive++;
+            game.physics.arcade.collide(tank, enemies[i].tank);
+            game.physics.arcade.overlap(bullets, enemies[i].tank, bulletHitEnemy, null, this);
+            enemies[i].update();
+        }
+
+        if(isDriver)
+        {
+            setTankInformation("TankData", enemies[i].tank.name, enemies[i].tank.x, enemies[i].tank.y, enemies[i].tank.angle, enemies[i]) //database, name, xPos, yPos, rotation, tankAlive)
+        } else {
+           // console.log("BEFORE " + enemies[i].tank.name + " xPos: " + enemies[i].tank.x + "  yPos: " + enemies[i].tank.y)
+            getTankInformation("TankData", enemies[i].tank.name, i);
+           // console.log("AFTER " + enemies[i].tank.name + " xPos: " + enemies[i].tank.x + "  yPos: " + enemies[i].tank.y)
+        }
+
+    }
+    
+    if (enemiesAlive == 0) { newWave(); }
+
+    
 }
 
 function collectGas (player2, gas)
@@ -803,7 +884,7 @@ function newWave(player, pickups)
     enemiesTotal++;// = 20;
     enemiesAlive = enemiesTotal;
 
-    for (var i = 0; i < enemiesTotal; i++)
+    for (var i = 0; i < 1; i++)
     {
         enemies.push(new EnemyTank(i, game, tank, enemyBullets));
     }
@@ -817,6 +898,27 @@ function spawnPickups()
         ammo_pickups.push(pickups.create(game.rnd.integerInRange(-1000, 2000), game.rnd.integerInRange(-1000, 2000), 'pickups'));
         gas_pickups.push(gas.create(game.rnd.integerInRange(-1000, 2000), game.rnd.integerInRange(-1000, 2000), 'gas'));
     }
+
+
+    clearPickupItems("GasItems");
+    clearPickupItems("ItemPickups");
+
+    if(isDriver) {
+        for (var i = 0; i <= 4; i++) {
+            pickupItems("GasItems", "Gas"+i, gas_pickups[i].x, gas_pickups[i].y);
+        }
+        for (var i = 0; i <= 4; i++) {
+            pickupItems("ItemPickups", "Items" + i, ammo_pickups[i].x, ammo_pickups[i].y);
+        }
+    } else {
+        for (var i = 0; i <= 4; i++) {
+            getPickupItems("GasItems", "Gas" + i, i, "FUEL");
+        }
+        for (var i = 0; i <= 4; i++) {
+            getPickupItems("ItemPickups", "Items" + i, i, "AMMO");
+        }
+    }
+
 }
 
 
@@ -855,6 +957,8 @@ function render () {
         game.debug.text('Ammo: ' + player.ammoCount, 600, 45);
         game.debug.text('Fuel: ' + player.fuelCount, 600, 60);
         game.debug.text('Player Score: ' + playerScore, 600, 75);
+        if(enemies[0] != null)
+            game.debug.text('Enemy: ' + enemies[0].tank.x + " " + enemies[0].tank.y, 50, 100);
     } else {
         game.debug.text('No more fun variable for you.' , 270, 300);
     }
