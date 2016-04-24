@@ -72,6 +72,7 @@ var locationT = {
 }
 
 var fb = new Firebase("https://tankcommander.firebaseio.com/"), locations = {}, result_box = document.getElementById("result");
+var ItemLocation = fb.child("/ItemPickups")
 
 if (fb)
 {
@@ -94,7 +95,39 @@ if (fb)
         delete locations[sn.key()];
         console.dir(({'removed': data}));
     });
+
+    fb.on('value', function(notesSnapshot) {
+        notesSnapshot.forEach(function(noteSnapshot) {
+            console.log(noteSnapshot.val()+ " ONNNN ");
+        });
+    });
+
+    fb.once('value', function(notesSnapshot) {
+        notesSnapshot.forEach(function(noteSnapshot) {
+            console.log(noteSnapshot.val());
+        });
+    });
 }
+
+
+
+/*ItemLocation.on("value", function(allMessagesSnapshot) {
+    allMessagesSnapshot.forEach(function(messageSnapshot) {
+        var key = messageSnapshot.key();  // e.g. "-JqpIO567aKezufthrn8"
+        var uid = messageSnapshot.child("x").val();  // e.g. "barney"
+        var text = messageSnapshot.child("y").val();  // e.g. "Welcome to Bedrock City!"
+        locationT.x = uid;
+        locationT.y = text;
+        console.log(locationT + " " + locationT.y);
+        //return locationT;
+    });
+});*/
+
+//var Item_Location = new Firebase("https://tankcommander.firebaseio.com/ItemPickups");
+fb.once("value", function(snapshot, itemNa) {
+    var name = snapshot.child("ItemPickups").child("itemNa").val();
+    console.log(name); // "Fred"
+});
 
 function getKey(name){
     var loc;
@@ -121,7 +154,6 @@ function addLocation(database, x, y) {
 
 function pickupItems(database, name, x, y) {
     if (getKey(name)) return;
-    locationOfData = database;
     fb.child("/"+database).push({
         itemName: name,
         x: x,
@@ -131,29 +163,21 @@ function pickupItems(database, name, x, y) {
     });
 }
 
-function getPickupItems(database, name){
-    console.log("1");
-    var messagesRef = new Firebase("https://tankcommander.firebaseio.com/"+database);
-    console.log("2");
-    messagesRef.once("value", function(allMessagesSnapshot) {
-        console.log("3");
-        allMessagesSnapshot.forEach(function(messageSnapshot) {
-            console.log("4");
-            console.log(name + "   " + messageSnapshot.child("itemName").val() + " same?: "+ (messageSnapshot.child("itemName").val() == name));
-            if(messageSnapshot.child("itemName").val() == name) {
-                // Will be called with a messageSnapshot for each child under the /messages/ node
-                var key = messageSnapshot.key();  // e.g. "-JqpIO567aKezufthrn8"
-                var uid = messageSnapshot.child("x").val();  // e.g. "barney"
-                var text = messageSnapshot.child("y").val();  // e.g. "Welcome to Bedrock City!"
-                locationT.x = uid;
-                locationT.y = text;
-                console.log("fadsfadsfddsadsfdas");
-                return locationT;
-            }
-        });
-    });
 
-    return locationT;
+function getPickupItems(database, name, index, arr){
+    var messagesRef = fb.child("/"+database); //ebase("https://tankcommander.firebaseio.com/"+database);
+
+        messagesRef.on("value", function (allMessagesSnapshot) {
+            allMessagesSnapshot.forEach(function (messageSnapshot) {
+                if (messageSnapshot.child("itemName").val() == name) {
+                    var uid = messageSnapshot.child("x").val();  // e.g. "barney"
+                    var text = messageSnapshot.child("y").val();  // e.g. "Welcome to Bedrock City!"
+                    ammo_pickups[index].x = uid;
+                    ammo_pickups[index].y = text;
+                    console.log("done " + ammo_pickups[index].x + " " + ammo_pickups[index].y + " uid " + uid + " " + text);
+                }
+            });
+        });
 
    /* var loc;
     for(loc in locations){
@@ -599,7 +623,7 @@ function create () {
 
     if(isDriver) {
         for (var i = 0; i <= 4; i++) {
-            pickupItems("GasItems", "Gas" + i, gas_pickups[i].x, gas_pickups[i].y);
+            pickupItems("GasItems", "Gas"+i, gas_pickups[i].x, gas_pickups[i].y);
         }
         for (var i = 0; i <= 4; i++) {
             pickupItems("ItemPickups", "Items" + i, ammo_pickups[i].x, ammo_pickups[i].y);
@@ -613,20 +637,20 @@ function create () {
         }*/
 
         var loc;
-        for (var i = 0; i <= 4; i++) {
+        /*for (var i = 0; i <= 4; i++) {
             loc = getPickupItems("GasItems", "Gas" + i);
             gas_pickups[i].x = loc.x;
             gas_pickups[i].y = loc.y;
             console.log(gas_pickups[i].x + " " + gas_pickups[i].y + " // " + loc.x + " " + loc.y);
-        }
+        }*/
         for (var i = 0; i <= 4; i++) {
-            loc = getPickupItems("ItemPickups", "Items" + i);
-            ammo_pickups[i].x = loc.x;
-            ammo_pickups[i].y = loc.y;
+            getPickupItems("ItemPickups", "Items" + i, i, ammo_pickups);
+            console.log("ammo pickups");
         }
     }
 
-
+    //fb.once();
+    //function something(snapshot)
     //console.log(gas_pickups[0].x);
 
     //for() pickupItems
