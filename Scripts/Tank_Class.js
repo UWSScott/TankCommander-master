@@ -6,6 +6,7 @@ var background;
 var TitleText;
 var Player_1_Text;
 var Player_2_Text;
+var music;
 var style = { font: "65px Arial Black", fill: "#8F5402", align: "center" }; //Impact
 var normalStyle = { font: "22px Arial Black", fill: "#ff0044", align: "center" }; //Impact
 
@@ -19,7 +20,7 @@ var turret;
 var player;
 var enemies;
 var enemyBullets;
-var enemiesTotal = 5;
+var enemiesTotal = 4;
 var enemiesAlive = 0;
 var tanksList;
 var explosions;
@@ -108,19 +109,6 @@ if (fb) {
     });*/
 }
 
-/*ItemLocation.on("value", function(allMessagesSnapshot) {
-    allMessagesSnapshot.forEach(function(messageSnapshot) {
-        var key = messageSnapshot.key();  // e.g. "-JqpIO567aKezufthrn8"
-        var uid = messageSnapshot.child("x").val();  // e.g. "barney"
-        var text = messageSnapshot.child("y").val();  // e.g. "Welcome to Bedrock City!"
-        locationT.x = uid;
-        locationT.y = text;
-        console.log(locationT + " " + locationT.y);
-        //return locationT;
-    });
-});*/
-
-
 function getKey(name){
     var loc;
     for(loc in locations){
@@ -185,42 +173,6 @@ function setTankInformation(database, name, x, y, rotation, currentSpeed, damage
     });
 }
 
-/*
-function setTankInformation(database, name, xPos, yPos, rotation, tankAlive)
-{
-    var messagesRef = fb.child("/"+database);
-    console.log((messagesRef));
-    messagesRef.on("value", function (allMessagesSnapshot) {
-        console.log((messagesRef.toString()));
-        allMessagesSnapshot.forEach(function (messageSnapshot) {
-            console.log((allMessagesSnapshot.toString()));
-            if (messageSnapshot.child("tankID").val() == name) {
-
-                /*messageSnapshot.update({
-                    tankID: name,
-                    x: 40,
-                    y: 20,
-                    rotation: 2,
-                    tankAlive: true
-                });
-
-                //var path = messageSnapshot.child("y").toString();
-                //console.log(path);
-                //fb.child(path).child("y").set(yPos);
-               // messageSnapshot.child("x").update(xPos);
-                //messageSnapshot.child("y").set(yPos);
-                //messageSnapshot.child("rotation").set(rotation);
-                //messageSnapshot.child("isAlive").set(tankAlive);
-
-                var dataX = messageSnapshot.child("x").val();
-                console.log(messageSnapshot.child("tankID").val() + " dataX : " + dataX + " - " + xPos);
-
-            }
-        });
-    });
-}
-*/
-
 function getTankInformation(database, name, index)
 {
    var messagesRef = fb.child("/"+database+"/"+name);
@@ -231,30 +183,14 @@ function getTankInformation(database, name, index)
         var turretDMG = allMessagesSnapshot.child("turretDmg").val();
         var tankARM = allMessagesSnapshot.child("tankArm").val();
 
-        console.log("HERE "+ xPos + " " + yPos + " " + rotation);
+        //console.log("HERE "+ xPos + " " + yPos + " " + rotation);
 
-        enemies[0].tank.x = xPos;
-        enemies[0].tank.y = yPos;
-        enemies[0].tank.angle = rotation;
-        enemies[0].damage = turretDMG;
-        enemies[0].armour = tankARM;
+        enemies[index].tank.x = xPos;
+        enemies[index].tank.y = yPos;
+        enemies[index].tank.angle = rotation;
+        enemies[index].damage = turretDMG;
+        enemies[index].armour = tankARM;
     });
-
-
-
-    /*messagesRef.on("value", function (allMessagesSnapshot) {
-        allMessagesSnapshot.forEach(function (messageSnapshot) {
-            if (messageSnapshot.child("tankID").val() == name) {
-                var xPos = messageSnapshot.child("x").val();
-                var yPos = messageSnapshot.child("y").val();
-                var rotation = messageSnapshot.child("rotation").val();
-                console.log("HERE "+ xPos + " " + yPos + " " + rotation);
-                enemies[index].tank.x = xPos;
-                enemies[index].tank.y = yPos;
-                enemies[index].rotation = rotation;
-            }
-        });
-    });*/
 }
 
 function getPickupItems(database, name, index, arr){
@@ -271,7 +207,7 @@ function getPickupItems(database, name, index, arr){
                         gas_pickups[index].x = xPos;
                         gas_pickups[index].y = yPos;
                     } else {
-                        console.log(("DISASTER!"));
+                        //console.log(("DISASTER!"));
                     }
                 }
             });
@@ -392,6 +328,7 @@ var eurecaClientSetup = function() {
                 tanksList[id].ammoCount = state.ammoCount;
                 tanksList[id].fuelCount = state.fuelCount;
                 tanksList[id].currentSpeed = state.currentSpeed;
+                tanksList[id].isInGame = state.isInGame;
                // tanksList[id].ammo_pickups = state.ammo_pickups;
                // tanksList[id].gas_pickups = state.gas_pickups;
                 tanksList[id].turret.rotation = state.rot;
@@ -407,7 +344,8 @@ Tank = function (index, game, player)
         left:false,
         right:false,
         up:false,
-        fire:false
+        fire:false,
+        inGame:false
     }
 
     this.input = {
@@ -415,8 +353,6 @@ Tank = function (index, game, player)
         right:false,
         up:false,
         fire:false
-        //ammoCount
-        //fuelCount
     }
 
     this.x = 0;
@@ -434,6 +370,7 @@ Tank = function (index, game, player)
     this.bullets.setAll('outOfBoundsKill', true);
     this.bullets.setAll('checkWorldBounds', true);
 
+   //this.isInGame = false;
     this.damage =5; //10
     this.armour =5; //10
 
@@ -489,7 +426,8 @@ Tank.prototype.update = function() {
         this.cursor.left != this.input.left ||
         this.cursor.right != this.input.right ||
         this.cursor.up != this.input.up ||
-        this.cursor.fire != this.input.fire
+        this.cursor.fire != this.input.fire ||
+        this.cursor.isInGame != this.input.isInGame
     );
 
 
@@ -505,18 +443,16 @@ Tank.prototype.update = function() {
             this.input.ammoCount = this.ammoCount;
             this.input.fuelCount = this.fuelCount;
             this.input.currentSpeed = this.currentSpeed;
-            //this.input.ammo_pickups = this.ammo_pickups;
-            //this.input.gas_pickups = this.gas_pickups;
+            this.input.isInGame = this.isInGame;
             eurecaServer.handleKeys(this.input);
         }
     }
 
-   //if(isDriver) {
-        if (this.cursor.left) {
-            this.tank.angle -= 1;
-        } else if (this.cursor.right) {
-            this.tank.angle += 1;
-        }
+    if (this.cursor.left) {
+        this.tank.angle -= 1;
+    } else if (this.cursor.right) {
+        this.tank.angle += 1;
+    }
 
         /*if (this.cursor.up) {
             //  The speed we'll travel at
@@ -612,10 +548,10 @@ EnemyTank = function (index, game, player, bullets)
     game.physics.enable(this.tank, Phaser.Physics.ARCADE);
     this.tank.body.immovable = false;
     this.tank.body.collideWorldBounds = true;
-    this.tank.body.bounce.setTo(1, 1);
+    this.tank.body.bounce.setTo(100, 100);
 
     this.tank.angle = game.rnd.angle();
-    //game.physics.arcade.velocityFromRotation(this.tank.rotation, 100, this.tank.body.velocity);
+    game.physics.arcade.velocityFromRotation(this.tank.rotation, 100, this.tank.body.velocity);
 
 };
 
@@ -697,10 +633,10 @@ function preload ()
     game.load.image('exit_Button', 'assets/exit-button-md.png');
     game.load.image('image_Ready', 'assets/statusReady.png');
     game.load.image('image_Menu', 'assets/MenuImage.png');
+    game.load.audio('Menu_Music', ['assets/Menu_Music.mp3', 'assets/audio/bodenstaendig_2000_in_rock_4bit.ogg']);
 }
 
 function create () {
-
     game.world.setBounds(-1000, -1000, 2000, 2000);
     game.stage.disableVisibilityChange  = true;
 
@@ -708,6 +644,11 @@ function create () {
     land.fixedToCamera = true;
 
     tanksList = {};
+
+    if(isDriver) { //To prevent both windows playing music at the same time (for demo purposes).
+        music = game.add.audio('Menu_Music');
+        music.play();
+    }
 
     player = new Tank(myId, game, tank);
     tanksList[myId] = player;
@@ -718,6 +659,8 @@ function create () {
     tank.y=0;
     bullets = player.bullets;
     shadow = player.shadow;
+    player.isInGame =  false;;//(player_1_Ready && player_2_Ready);
+    //console.log(player_1_Ready && player_2_Ready);
 
     explosions = game.add.group();
     for (var i = 0; i < 10; i++)
@@ -807,9 +750,6 @@ function create () {
         drive_Rotate_Button_R.fixedToCamera = true;
     }
 
-    //background = game.add.sprite(0, 0, 800, 600, 'image_Menu');
-    //background = new Image(game, 0, 0, key, frame);
-
     background = game.add.button(0, 0, 'image_Menu', exit_Program, this, 2, 1, 0);
     Image_Player_1 = game.add.button(30, 40, 'image_Ready', exit_Program, this, 2, 1, 0);
     Image_Player_2 = game.add.button(600, 40, 'image_Ready', exit_Program, this, 2, 1, 0);
@@ -836,8 +776,11 @@ function update () {
 
     //inMenu = true;
     //background.visible = inMenu;
+    //!player.isInGame;
 
-    if(inMenu)
+    console.log(isDriver + " ingame: " + player.isInGame);
+
+    if(player.isInGame == false)
     {
         background.visible = true;
         Image_Player_1.visible = player_1_Ready;
@@ -900,6 +843,7 @@ function update () {
                 tanksList[i].currentSpeed = player.currentSpeed;
                 player.ammoCount = tanksList[i].ammoCount;
                 tanksList[i].visible = false;
+                //player.isInGame = tanksList[i].isInGame;
                 tanksList[i].turret.bringToTop();
             } else {
                 player.fuelCount = tanksList[i].fuelCount;
@@ -909,6 +853,7 @@ function update () {
                 player.tank.angle = tanksList[i].tank.angle;
                 player.turret.x = tanksList[i].turret.x;
                 player.turret.y = tanksList[i].turret.y;
+                player.isInGame = tanksList[i].isInGame;
                 tanksList[i].turret.rotation = player.turret.rotation;
                 player.turret.bringToTop();
                 tanksList[i].visible = false;
@@ -968,20 +913,16 @@ function newWave(player, pickups)
     spawnPickups();
     waveCount++;
     enemies = [];
-    enemiesTotal++;// = 20;
+    enemiesTotal++;
     enemiesAlive = enemiesTotal;
 
-    for (var i = 0; i < 1; i++)
-    {
-        enemies.push(new EnemyTank(i, game, tank, enemyBullets));
-    }
+    for (var i = 0; i < enemiesTotal; i++) { enemies.push(new EnemyTank(i, game, tank, enemyBullets)); }
 }
 
 function spawnPickups()
 {
     funvariable = 0;
-    for (var i = 0; i <= 4; i++)
-    {
+    for (var i = 0; i <= 4; i++) {
         ammo_pickups.push(pickups.create(game.rnd.integerInRange(-1000, 2000), game.rnd.integerInRange(-1000, 2000), 'pickups'));
         gas_pickups.push(gas.create(game.rnd.integerInRange(-1000, 2000), game.rnd.integerInRange(-1000, 2000), 'gas'));
     }
@@ -1006,7 +947,6 @@ function spawnPickups()
     }
 }
 
-
 function rotateTurret_Right()
 {
     player.turret.rotation += 0.1;
@@ -1014,8 +954,6 @@ function rotateTurret_Right()
 
 function bulletHitPlayer (tank, bullet)
 {
-    //bullet.kill();
-    //alert( "enemy name: "  + tank.name);
     if (getPenetration(game.rnd.integerInRange(1, 5), player.armour)) {
         player.alive = false;
         player.tank.kill();
@@ -1038,7 +976,7 @@ function bulletHitEnemy (tank, bullet) {
 }
 
 function render () {
-    if (!ready || inMenu) return;
+    if (!ready || player.isInGame == false) return;
 
     if(player.alive) {
         game.debug.text('Wave Count: ' + waveCount, 600, 15);
@@ -1062,8 +1000,7 @@ function tankTimedUpdate()
     }
 }
 
-function getPenetration(damageValue, armourValue)
-{
+function getPenetration(damageValue, armourValue) {
     var Dmg = game.rnd.integerInRange(0, damageValue);
     var Arm = game.rnd.integerInRange(0, armourValue);
     if(Dmg > Arm)
@@ -1089,8 +1026,12 @@ function set_button_down(setTo) { b_down_down = setTo; }
 
 function start_Program()
 {
-    if(player_1_Ready && player_2_Ready)
-        inMenu = false;
+    if(player_1_Ready && player_2_Ready) {
+        if(isDriver)
+            music.stop();
+        player.isInGame = true;
+    }
+    //inMenu = false;
 }
 
 function exit_Program()
